@@ -1,87 +1,91 @@
 import board
-import busio
-from digitalio import DigitalInOut, Direction, Pull
 
-from adafruit_mcp230xx.mcp23017 import MCP23017
-
+from kmk.kmk_keyboard import KMKKeyboard
+from kmk.scanners import DiodeOrientation
 from kmk.hid import HIDModes
 from kmk.keys import KC
-from kmk.kmk_keyboard import KMKKeyboard
+from kmk.modules.holdtap import HoldTap
 from kmk.modules.layers import Layers
-from kmk.scanners import DiodeOrientation
-from kmk.scanners.digitalio import MatrixScanner
+from kmk.modules.encoder import EncoderHandler
+from kmk.handlers.sequences import send_string
 
-# DEBUG_ENABLE = True
+keyboard = KMKKeyboard()
+encoder_handler = EncoderHandler()
 
+keyboard.modules = [encoder_handler]
+keyboard.modules.append(Layers())
+keyboard.modules.append(HoldTap())
 
-i2c = busio.I2C(scl=board.SCL, sda=board.SDA, frequency=100000)
-mcp = MCP23017(i2c, address=0x20)
-class MyKeyboard(KMKKeyboard):
-    def __init__(self):
-        # create and register the scanner
-        self.matrix = MatrixScanner(
-            cols=(mcp.get_pin(12), mcp.get_pin(13), mcp.get_pin(14), mcp.get_pin(15), mcp.get_pin(4), mcp.get_pin(5), mcp.get_pin(6), mcp.get_pin(7), mcp.get_pin(3), mcp.get_pin(2), mcp.get_pin(1)),
-            rows=(board.D7, board.D8, board.D9, board.D10),
-            diode_orientation=DiodeOrientation.COLUMNS,
-            pull=Pull.DOWN,
-            rollover_cols_every_rows=None, # optional
-        )
-
-keyboard = MyKeyboard()
-layer_ext = Layers
-keyboard.modules = [layer_ext]
-
-_______ = KC.TRNS
-XXXXXXX = KC.NO
-
-FN = KC.MO(1)
-
-keyboard.debug_enabled = True
-
-keyboard.col_pins = (mcp.get_pin(12), mcp.get_pin(13), mcp.get_pin(14), mcp.get_pin(15), mcp.get_pin(4), mcp.get_pin(5), mcp.get_pin(6), mcp.get_pin(7), mcp.get_pin(3), mcp.get_pin(2), mcp.get_pin(1))
-keyboard.row_pins = (board.D7, board.D8, board.D9, board.D10)
+keyboard.col_pins = (board.D4,board.D5,board.D6,)
+keyboard.row_pins = (board.D10,board.D9,board.D8,board.D7,)
 keyboard.diode_orientation = DiodeOrientation.COLUMNS
 
-keyboard.keymap = [
-    # Qwerty
-    # ,--------------------------------------------------------------------------------------------------------.
-    # |   `  |   1  |   2  |   3  |   4  |   5  |   6  |   7  |   8  |   9  |   0  |   -  |   =  | Bksp | Del  |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Tab  |   Q  |   W  |   E  |   R  |   T  |   Y  |   U  |   I  |   O  |   P  |   [  |   ]  |   \  | PgUp |
-    # |------+------+------+------+------+-------------+------+------+------+------+------+------+------+------|
-    # | Esc  |   A  |   S  |   D  |   F  |   G  |   H  |   J  |   K  |   L  |   ;  |   '  |      |Enter | PgDn |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Shift|   Z  |   X  |   C  |   V  |   B  |   N  |   M  |   ,  |   .  |   /  |Shift |      |  Up  | Ins  |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Ctrl | GUI |  Alt  |      |      |Space |      |      |  Fn  | Alt  | Ctrl | Left |      | Down | Right|
-    # `------------------------------------------------------------------------------------------+------+------'
-    [
-        KC.GRV,  KC.N1,   KC.N2,   KC.N3,   KC.N4,     KC.N5,   KC.N6,   KC.N7,   KC.N8,   KC.N9,   KC.N0,
-        KC.TAB,  KC.Q,    KC.W,    KC.E,    KC.R,      KC.T,    KC.Y,    KC.U,    KC.I,    KC.O,    KC.P,
-        KC.ESC,  KC.A,    KC.S,    KC.D,    KC.F,      KC.G,    KC.H,    KC.J,    KC.K,    KC.L,    KC.SCLN,
-        KC.LSFT, KC.Z,    KC.X,    KC.C,    KC.V,      KC.B,    KC.N,    KC.M,    KC.COMM, KC.DOT,  KC.SLSH
-    ],
-        # Qwerty
-    # ,--------------------------------------------------------------------------------------------------------.
-    # |   `  |   1  |   2  |   3  |   4  |   5  |   6  |   7  |   8  |   9  |   0  |   -  |   =  | Bksp | Del  |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Tab  |   Q  |   W  |   E  |   R  |   T  |   Y  |   U  |   I  |   O  |   P  |   [  |   ]  |   \  | PgUp |
-    # |------+------+------+------+------+-------------+------+------+------+------+------+------+------+------|
-    # | Esc  |   A  |   S  |   D  |   F  |   G  |   H  |   J  |   K  |   L  |   ;  |   '  |      |Enter | PgDn |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Shift|   Z  |   X  |   C  |   V  |   B  |   N  |   M  |   ,  |   .  |   /  |Shift |      |  Up  | Ins  |
-    # |------+------+------+------+------+------+------+------+------+------+------+------+------+------+------|
-    # | Ctrl | GUI |  Alt  |      |      |Space |      |      |  Fn  | Alt  | Ctrl | Left |      | Down | Right|
-    # `------------------------------------------------------------------------------------------+------+------'
-    [
-        KC.GRV,  KC.N1,   KC.N2,   KC.N3,   KC.N4,     KC.N5,   KC.N6,   KC.N7,   KC.N8,   KC.N9,   KC.N0,
-        KC.TAB,  KC.Q,    KC.W,    KC.E,    KC.R,      KC.T,    KC.Y,    KC.U,    KC.I,    KC.O,    KC.P,
-        KC.ESC,  KC.A,    KC.S,    KC.D,    KC.F,      KC.G,    KC.H,    KC.J,    KC.K,    KC.L,    KC.SCLN,
-        KC.LSFT, KC.Z,    KC.X,    KC.C,    KC.V,      KC.B,    KC.N,    KC.M,    KC.COMM, KC.DOT,  KC.SLSH
-    ]
+encoder_handler.divisor = 2
+encoder_handler.pins = ((board.D3,board.D2,board.D1,),)
 
+# Layer Switching
+LWR     = KC.MO(1)
+TLWR    = KC.LT(1, KC.TAB, prefer_hold=True, tap_interrupted=False, tap_time=250)
+RSE     = KC.MO(2)
+TRSE    = KC.LT(2, KC.TAB, prefer_hold=True, tap_interrupted=False, tap_time=250)
+
+# Strings
+MAIL    = send_string("patrick.henson@standard.com\n")
+PHONE   = send_string("5555555555\n")
+HIWI    = send_string("5\t9\t160\t")
+T1      = send_string("\ttest\t")
+T2      = send_string("\ttest\ttest\t")
+T2D2    = send_string("\ttest\t01/2023\t05/2023\ttest")
+T4D1    = send_string("\ttest\t01/2023\ttest\ttest\ttest\t")
+T5D1    = send_string("\t01/2023\ttest\ttest\ttest\ttest\t")
+WP      = send_string("")
+UID     = send_string("")
+CURPASS = send_string("")
+
+# KMK Variables
+XXX     = KC.NO
+UPLV    = KC.TRNS
+
+# CTRL Variables
+CTA     = KC.LCTL(KC.A)
+CTS     = KC.LCTL(KC.S)
+CTX     = KC.LCTL(KC.X)
+CTC     = KC.LCTL(KC.C)
+CTV     = KC.LCTL(KC.V)
+CTZ     = KC.LCTL(KC.Z)
+SCCAP   = KC.LCTL(KC.PSCR)
+ATAB    = KC.LALT(KC.TAB)
+CAT     = KC.LCTL(KC.ALT(KC.DEL))
+
+keyboard.keymap = [
+    [   # 0.BSE - Base layer
+        KC.ESC,     CTC,        CTV,
+        MAIL,       PHONE,      HIWI,
+        T1,         KC.LSFT,    KC.ENT,
+        XXX,        TRSE,       TLWR
+    ],
+    [   # 1.LWR - String layer
+        UPLV,       T1,         T2,
+        T2D2,       T4D1,       T5D1,
+        KC.SPC,     KC.TAB,     UPLV,
+        XXX,        XXX,        UPLV
+    ],
+    [   # 1.RSE - Random stuff layer
+        UPLV,       WP,         CTA,
+        UPLV,       UID,        CURPASS,
+        XXX,        XXX,        UPLV,
+        XXX,        UPLV,       XXX
+    ],
 ]
 
+encoder_handler.map = (
+    ((KC.LEFT, KC.TAB,KC.A),),
+    ((KC.LEFT, KC.TAB,KC.A),),
+    ((KC.LEFT, KC.TAB,KC.A),),
+)
+
 if __name__ == '__main__':
-    keyboard.go(hid_type=HIDModes.BLE, ble_name='Wyld')
-    # keyboard.go(hid_type=HIDModes.USB)
+    #keyboard.go(hid_type=HIDModes.BLE, ble_name='BLRM')
+    keyboard.go(hid_type=HIDModes.USB)
+
+Print("done")
